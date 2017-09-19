@@ -3,11 +3,10 @@ var router = express.Router();
 
 /* GET home page. */
 router.get('/', function(req, res, next) {
-  console.log('res from fb',req);
   res.render('index', { title: 'Express' });
 });
 router.get('/success', function(req, res, next) {
-  console.log('res from fb',req);
+  console.log('res from fb');
   res.render('index', { title: 'Success' });
 });
 

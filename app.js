@@ -27,8 +27,31 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(passport.initialize())
 app.use(passport.session())
 
-app.use('/', index);
-app.use('/users', users);
+app.use('/', index)
+app.use('/users', users)
+passport.serializeUser(function(user, done) {
+  done(null, user);
+});
+
+passport.deserializeUser(function(user, done) {
+  done(null, user)
+});
+passport.use(new FacebookStrategy({
+    clientID: process.env.fbId,
+    clientSecret: process.env.fbSecret,
+    callbackURL: "http://localhost:3000/auth/facebook/callback",
+    scope: ['email', 'public_profile'],
+    profileFields: ['email', 'gender']
+  },
+  (accessToken, refreshToken, profile, cb) => {
+    console.log({accessToken,refreshToken,profile,cb})
+    User.findOrCreate({ facebookId: profile.id , profile: profile}, (err, user) => {
+      console.log('***** user ******', user);
+      return cb(null, user)
+    })
+  }))
+
+
 var User = {
   findOrCreate: function({facebookId, profile}){
     return new Promise((resolve, reject) => {
@@ -41,34 +64,28 @@ var User = {
         reject(error)
       }
     })
+  },
+  findById: function(id){
+    return new Promise((resolve, reject) => {
+      if(id){
+        console.log('deserializeUser',id);
+        resolve(true)
+      } else {
+        reject({name:'deserializeUser error'})
+      }
+    })
   }
 }
-
-passport.use(new FacebookStrategy({
-    clientID: process.env.fbId,
-    clientSecret: process.env.fbSecret,
-    callbackURL: "http://localhost:3000/auth/facebook/callback",
-    profileFields: ['id', 'displayName', 'photos', 'email', 'gender']
-  },
-  function(accessToken, refreshToken, profile, cb) {
-    console.log({accessToken,refreshToken,profile,cb});
-    User.findOrCreate({ facebookId: profile.id , profile: profile}, function (err, user) {
-      console.log('***** user ******', user);
-      if(user) {
-        return cb(user);
-      } else { return cb(err)}
-    });
-  }
-));
-
 app.get('/auth/facebook',
-  passport.authenticate('facebook'));
+  passport.authenticate('facebook'),(req, res)=> {
+    console.log('hit first auth')
+  });
 
 app.get('/auth/facebook/callback',
-  passport.authenticate('facebook',{scope: ['email', 'public_profile']}, { failureRedirect: '/login' }),
+  passport.authenticate('facebook',{scope: ['email', 'public_profile']}, { failureRedirect: '/' }),
   function(req, res) {
     // Successful authentication, redirect home.
-    console.log('**************** success ***********************', req);
+    console.log('**************** success in /callback ***********************');
 
     res.redirect('/success');
   });
